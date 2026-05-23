@@ -1,58 +1,66 @@
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+import streamlit as st
+import cv2
 from PIL import Image
-import torch
+from transformers import BlipProcessor, BlipForConditionalGeneration
 
-# Smaller model for testing
-model_name = "Qwen/Qwen2.5-VL-3B-Instruct"
+st.title("Image Captioning In Live Camera With AI Trained Model")
+# 
+if "stop" not in st.session_state:
+    st.session_state.stop=None
+if "flag" not in st.session_state:
+    st.session_state.flag=False
+# Load model only once
+@st.cache_resource
+# In this mathod we load the pre-trained model of caption generation from image 
+def load_model():
+    processor=BlipProcessor.from_pretrained(
+        "Salesforce/blip-image-captioning-base"
+    )
 
-# Load model
-model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto"
-)
+    model=BlipForConditionalGeneration.from_pretrained(
+        "Salesforce/blip-image-captioning-base",
+        use_safetensors=True
+    )
+    return processor, model
+# Give the processor or model from pre-trained model
+processor, model = load_model()
+st.subheader("Capture an image using your camera")
+cam=cv2.VideoCapture(0)
+frame_placeholder=st.empty()
+if not cam.isOpened():
+    st.error("Could not open webcam")
+    st.stop()
+_,frame=cam.read()    
+frame=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+col1,col2=st.columns(2)
+with col1:
+    if st.button('Start/Restart'):
+        st.session_state.stop=False
+        st.session_state.flag=True
+with col2:
+    if st.button('Take image'):
+        if(st.session_state.flag is True and st.session_state.stop is False):
+            st.session_state.stop=True
+            image=Image.fromarray(frame)
+        with st.spinner("Generating Caption..."):
+            inputs = processor(image,return_tensors="pt")
 
-processor = AutoProcessor.from_pretrained(model_name)
+            output = model.generate(**inputs,max_length=30)
 
-# Open image
-image = Image.open("Caption_generator\test.jpg").convert("RGB")
-
-# Prepare input
-messages = [
-    {
-        "role": "user",
-        "content": [
-            {"type": "image", "image": image},
-            {"type": "text", "text": "Describe this image in one sentence."}
-        ]
-    }
-]
-
-# Convert to model format
-text = processor.apply_chat_template(
-    messages,
-    tokenize=False,
-    add_generation_prompt=True
-)
-
-inputs = processor(
-    text=[text],
-    images=[image],
-    return_tensors="pt"
-)
-
-inputs = inputs.to(model.device)
-
-# Generate caption
-output = model.generate(
-    **inputs,
-    max_new_tokens=50
-)
-
-result = processor.batch_decode(
-    output,
-    skip_special_tokens=True
-)
-
-print("\nCaption:")
-print(result[0])
+            caption = processor.decode(output[0],skip_special_tokens=True)
+        st.subheader("Caption")
+        st.success(caption)
+while st.session_state.stop is False:
+    success,frame=cam.read()
+    if not success:
+        st.error("Could not read frame")
+        break
+    frame=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+    frame_placeholder.image(frame,caption="Camera View",use_container_width=True)
+if st.session_state.stop is True:
+    frame_placeholder.image(frame,caption="Captured Image",use_container_width=True)
+with st.columns([1,2,1])[1]:
+    if st.button('Clear'):
+        st.session_state.stop=False
+        frame_placeholder.empty()
+cam.release()

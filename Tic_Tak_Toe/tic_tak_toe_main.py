@@ -9,15 +9,14 @@ player_moved=False
 # This method is for check who is the winner
 def check_winner(player):
     flag=False
-    win_conditions = [
-        [0,1,2], [3,4,5], [6,7,8],  # rows
-        [0,3,6], [1,4,7], [2,5,8],  # cols
-        [0,4,8], [2,4,6]            # diagonals
+    win_conditions=[
+        [0,1,2],[3,4,5],[6,7,8],  # rows combinations
+        [0,3,6],[1,4,7],[2,5,8],  # cols combinations
+        [0,4,8],[2,4,6]           # diagonals combinations
     ]
-
     for condi in win_conditions:
         for i in condi:
-            if board[i] == player:
+            if board[i]==player:
                 flag=True
             else:                
                 flag=False
@@ -58,6 +57,7 @@ def minimax(is_maximizing):
             board[move]=" "
             best_score=min(score,best_score)
         return best_score
+    
 # This method is for AI move
 def ai_move():
     best_score = -math.inf
@@ -71,6 +71,7 @@ def ai_move():
             best_move = move
     if best_move is not None:
         board[best_move]=si
+
 # Main game loop starts here
 st.title("Tic Tac Toe Game")
 if "sig" not in st.session_state:
@@ -85,6 +86,7 @@ if sig=="X":
     si="O"
 else:
     si="X"
+    
 # This method is for Human move
 col1,col2,col3 = st.columns(3)
 with col1:

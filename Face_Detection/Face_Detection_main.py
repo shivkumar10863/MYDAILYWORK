@@ -36,6 +36,7 @@ while not stop:
         st.error("Could not read frame")
         break
     gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+
     # Detect faces
     faces = face_cascade.detectMultiScale(
         gray,
@@ -53,4 +54,3 @@ while not stop:
 
     frame_placeholder.image(frame,caption=f"Detected Faces: {len(faces)}",use_container_width=True)
 cam.release()
-cv2.destroyAllWindows()
